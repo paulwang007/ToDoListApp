@@ -20,13 +20,23 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.example.androidtutz.todolistapp.adapter.ToDoListAdapter;
+
 import com.example.androidtutz.todolistapp.adapter.RecyclerTouchListener;
-import com.example.androidtutz.todolistapp.data.ToDoListItem;
+import com.example.androidtutz.todolistapp.adapter.ToDoListAdapter;
 import com.example.androidtutz.todolistapp.data.ToDoDataManager;
+import com.example.androidtutz.todolistapp.data.ToDoListItem;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.functions.Predicate;
+import io.reactivex.rxjava3.observers.DisposableObserver;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+
 
 import static android.content.Context.MODE_PRIVATE;
 
@@ -63,7 +73,7 @@ public class TodolistFragment extends Fragment {
     private View view;
     private TextView searchEditText;
 
-
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     public TodolistFragment() {
         // Required empty public constructor
@@ -180,6 +190,13 @@ public class TodolistFragment extends Fragment {
         mListener = null;
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        compositeDisposable.clear();
+    }
+
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an interaction in this fragment to be communicated
@@ -228,10 +245,32 @@ public class TodolistFragment extends Fragment {
     }
 
     private void loadData() {
+        Observable<ToDoListItem> observable = Observable.fromArray(toDoDataManager.getAllToDoListItem_list().toArray(new ToDoListItem[0]));
 
+        compositeDisposable.add(
+                observable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                        .filter(toDoListItem -> toDoListItem.getToDoListItemStatus().equals(taskStatus))
+                        .map(toDoListItem -> {
+                            toDoListItem.setToDoListItemDescription(dateFront+" "+toDoListItem.getToDoListItemPlanedAchievDate());
+                            return toDoListItem;
+                        })
+                        .subscribeWith(new DisposableObserver<ToDoListItem>() {
+                            @Override
+                            public void onNext(@NonNull ToDoListItem toDoListItem) {
+                                goalsList.add(toDoListItem);
+                            }
 
+                            @Override
+                            public void onError(@NonNull Throwable e) {
 
+                            }
 
+                            @Override
+                            public void onComplete() {
+                                goalAdapter.notifyDataSetChanged();
+                            }
+                        })
+        );
 
     }
 

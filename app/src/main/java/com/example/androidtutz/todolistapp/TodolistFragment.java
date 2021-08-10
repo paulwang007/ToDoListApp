@@ -25,9 +25,12 @@ import com.example.androidtutz.todolistapp.adapter.RecyclerTouchListener;
 import com.example.androidtutz.todolistapp.adapter.ToDoListAdapter;
 import com.example.androidtutz.todolistapp.data.ToDoDataManager;
 import com.example.androidtutz.todolistapp.data.ToDoListItem;
+import com.jakewharton.rxbinding4.widget.RxTextView;
+import com.jakewharton.rxbinding4.widget.TextViewAfterTextChangeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.NonNull;
@@ -268,6 +271,31 @@ public class TodolistFragment extends Fragment {
                             @Override
                             public void onComplete() {
                                 goalAdapter.notifyDataSetChanged();
+                            }
+                        })
+        );
+
+        compositeDisposable.add(
+                RxTextView.afterTextChangeEvents(searchEditText)
+                        .skipInitialValue()
+                        .debounce(300, TimeUnit.MILLISECONDS)
+                        .distinct()
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(new DisposableObserver<TextViewAfterTextChangeEvent>() {
+                            @Override
+                            public void onNext(@NonNull TextViewAfterTextChangeEvent textViewAfterTextChangeEvent) {
+                                goalAdapter.getFilter().filter(textViewAfterTextChangeEvent.getView().getText());
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e) {
+
+                            }
+
+                            @Override
+                            public void onComplete() {
+
                             }
                         })
         );
